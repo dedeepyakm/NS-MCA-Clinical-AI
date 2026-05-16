@@ -1,0 +1,34 @@
+﻿{
+  "thresholds": {
+    "surgery": {
+      "tau": 0.85,
+      "justification": "Irreversible procedures - need high confidence",
+      "dataset_size": 2,
+      "data_points_evaluated": 2
+    },
+    "pharmacology": {
+      "tau": 0.75,
+      "justification": "Drug-critical decisions - medium-high confidence",
+      "dataset_size": 5,
+      "data_points_evaluated": 5
+    },
+    "general": {
+      "tau": 0.65,
+      "justification": "Reversible interventions - moderate confidence",
+      "dataset_size": 41,
+      "data_points_evaluated": 41
+    },
+    "pediatrics": {
+      "tau": 0.70,
+      "justification": "Special population - need extra care",
+      "dataset_size": 2,
+      "data_points_evaluated": 2
+    }
+  },
+  "optimization_method": "ROC_curve_F1_maximization",
+  "validation_set_size": 50,
+  "search_range": [0.5, 0.95],
+  "search_step": 0.05,
+  "generated_by": "Notebook 05 - Layer 4 Policy Auditor",
+  "timestamp": "will_be_set_during_execution"
+}

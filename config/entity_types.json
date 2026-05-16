@@ -1,0 +1,56 @@
+﻿{
+  "entity_types": [
+    {
+      "name": "DRUG",
+      "description": "Medication or pharmaceutical agent",
+      "example": "Amoxicillin, Levofloxacin",
+      "priority": 1,
+      "criticality": "CRITICAL"
+    },
+    {
+      "name": "DOSE",
+      "description": "Quantity of medication",
+      "example": "500mg, 2 tablets",
+      "priority": 2,
+      "criticality": "CRITICAL"
+    },
+    {
+      "name": "FREQUENCY",
+      "description": "How often medication taken",
+      "example": "twice daily, every 8 hours",
+      "priority": 3,
+      "criticality": "HIGH"
+    },
+    {
+      "name": "ROUTE",
+      "description": "Method of administration",
+      "example": "oral, intravenous, intramuscular",
+      "priority": 4,
+      "criticality": "HIGH"
+    },
+    {
+      "name": "DURATION",
+      "description": "How long treatment lasts",
+      "example": "for 7 days, for 2 weeks",
+      "priority": 5,
+      "criticality": "MEDIUM"
+    },
+    {
+      "name": "INDICATION",
+      "description": "Condition being treated",
+      "example": "pneumonia, hypertension",
+      "priority": 6,
+      "criticality": "MEDIUM"
+    },
+    {
+      "name": "ALLERGY",
+      "description": "Patient allergies/contraindications",
+      "example": "penicillin allergy, shellfish allergy",
+      "priority": 0,
+      "criticality": "CRITICAL"
+    }
+  ],
+  "total_types": 7,
+  "extraction_method": "hybrid",
+  "methods": ["keyword_matching", "regex_patterns", "scispacy_ner", "entity_linking_umls"]
+}

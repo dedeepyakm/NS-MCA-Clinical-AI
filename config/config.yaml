@@ -1,0 +1,74 @@
+﻿# NS-MCA Configuration File
+
+data:
+  raw_medqa: data/medqa_raw.json
+  validation_split: data/medqa_50_validation.json
+  test_split: data/medqa_50_test.json
+
+results:
+  layer1: results/layer1_outputs.json
+  layer1_calib: results/layer1_calibration.json
+  layer2: results/layer2_ner_results.json
+  layer3: results/layer3_predicates.json
+  layer4: results/layer4_thresholds_roc.json
+  layer5: results/layer5_recovery_results.json
+  layer6: results/layer6_escalation_results.json
+  pipeline: results/complete_pipeline_results.json
+  metrics: results/final_metrics.json
+  audit_trails: results/audit_trails/
+
+plots:
+  roc_curves: plots/roc_curves_by_specialty.png
+  calibration: plots/calibration_curve.png
+  ner_performance: plots/ner_performance.png
+  metrics_summary: plots/metrics_summary.png
+  ablation: plots/ablation_results.png
+
+models:
+  neural_model: google/flan-t5-large
+  ner_model: en_core_sci_sm
+  device: cpu
+
+hyperparameters:
+  batch_size: 8
+  max_input_length: 512
+  max_output_length: 256
+  temperature: 0.0
+  num_beams: 1
+
+calibration:
+  temperature_search_range: [1.0, 2.0]
+  temperature_step: 0.1
+  target_ece: 0.08
+
+thresholds:
+  surgery: 0.85
+  pharmacology: 0.75
+  general: 0.65
+  pediatrics: 0.70
+
+entity_types:
+  - DRUG
+  - DOSE
+  - FREQUENCY
+  - ROUTE
+  - DURATION
+  - INDICATION
+  - ALLERGY
+
+policies:
+  total_count: 200
+  policy_file: config/clinical_policies.json
+
+evaluation:
+  metrics:
+    - VPG
+    - Satisfiability
+    - IRR
+  validation_split_size: 50
+  test_split_size: 50
+
+reproducibility:
+  random_seed: 42
+  torch_seed: 42
+  numpy_seed: 42

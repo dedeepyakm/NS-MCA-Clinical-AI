@@ -1,0 +1,48 @@
+﻿{
+  "policies": [
+    {
+      "policy_id": "contraind_001",
+      "name": "Penicillin Allergy - Avoid β-lactams",
+      "rule": "IF PatientAllergy(penicillin) THEN NOT Recommend(amoxicillin, ampicillin, cephalexin)",
+      "severity": "CRITICAL",
+      "condition": "penicillin_allergy",
+      "prohibited_drugs": ["amoxicillin", "ampicillin", "penicillin", "cephalexin", "cefadroxil"],
+      "reason": "Risk of anaphylaxis"
+    },
+    {
+      "policy_id": "dose_001",
+      "name": "Acetaminophen Maximum Daily Dose",
+      "rule": "IF Recommend(acetaminophen) THEN RecommendedDose ≤ 4000",
+      "severity": "HIGH",
+      "drug": "acetaminophen",
+      "max_dose_mg": 4000,
+      "unit": "mg/day",
+      "reason": "Risk of hepatotoxicity"
+    },
+    {
+      "policy_id": "contraind_002",
+      "name": "Metformin in Renal Impairment",
+      "rule": "IF Recommend(metformin) AND CreatinineClearance < 45 THEN ESCALATE",
+      "severity": "HIGH",
+      "condition": "renal_impairment",
+      "drug": "metformin",
+      "creatinine_threshold": 45,
+      "reason": "Risk of lactic acidosis"
+    },
+    {
+      "policy_id": "interaction_001",
+      "name": "Warfarin-NSAID Interaction",
+      "rule": "IF Recommend(warfarin) AND Recommend(ibuprofen) THEN ESCALATE",
+      "severity": "CRITICAL",
+      "drug1": "warfarin",
+      "drug2": "ibuprofen",
+      "reason": "Increased bleeding risk"
+    }
+  ],
+  "summary": {
+    "total_policies": 4,
+    "critical_policies": 2,
+    "high_severity_policies": 2,
+    "note": "This is a starter set. Full deployment would have 200+ policies from clinical guidelines."
+  }
+}
