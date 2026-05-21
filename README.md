@@ -88,7 +88,8 @@ Input Question (X)
 └─────────────────────────────────────┘
 ```
 
-*[Architecture diagram — see* `architecture_diagram.png` *]*
+<img width="1585" height="992" alt="image" src="https://github.com/user-attachments/assets/03dd2d0d-426f-4b8f-8159-cdba1f01bc10" />
+
 
 ### The Core Equation
 
