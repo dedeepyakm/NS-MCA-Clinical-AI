@@ -108,14 +108,19 @@ high confidence nor policy compliance alone is sufficient.
 ### Three Novel Metrics
 
 **Violation Proximity Gap (VPG):**
-$$\text{VPG} = \frac{1}{N}\sum_{j=1}^{N}|V(y_j) \cap P|$$
+$$
+\text{VPG} = \frac{1}{N}\sum_{j=1}^{N}|V(y_j) \cap P|
+$$
 
 **Satisfiability Score:**
-$$\text{Sat} = \frac{\#\{y_j : S(y_j) = \text{true OR recovered}\}}{N} \times 100\%$$
+$$
+\text{Sat} = \frac{\#\{y_j : S(y_j) = \text{true OR recovered}\}}{N} \times 100\%
+$$
 
 **Intervention Recovery Rate (IRR):**
-$$\text{IRR} = \frac{\#\{\text{successful recoveries}\}}{\#\{\text{attempted recoveries}\}}$$
-
+$$
+\text{IRR} = \frac{\#\{\text{successful recoveries}\}}{\#\{\text{attempted recoveries}\}}
+$$
 ---
 
 ## Version History
