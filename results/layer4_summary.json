@@ -1,0 +1,55 @@
+{
+  "metadata": {
+    "layer": "Layer 4 - Policy Auditor",
+    "timestamp": "1779246713.5148075"
+  },
+  "satisfiability": {
+    "accept_rate": 0.020985616599858523,
+    "escalation_rate": 0.9790143834001415,
+    "accepted_count": 267,
+    "escalated_count": 12456
+  },
+  "violations": {
+    "total_violations": 74,
+    "predictions_with_violations": 11,
+    "violation_rate": 0.0008645759647881788,
+    "violations_by_category": {
+      "OPIOID_SAFETY": 74
+    },
+    "violations_by_severity": {
+      "HIGH": 34,
+      "CRITICAL": 40
+    },
+    "violations_by_specialty": {
+      "general": {
+        "total_predictions": 5143,
+        "predictions_with_violations": 0,
+        "total_violations": 0,
+        "violation_rate": 0.0
+      },
+      "pediatrics": {
+        "total_predictions": 1269,
+        "predictions_with_violations": 0,
+        "total_violations": 0,
+        "violation_rate": 0.0
+      },
+      "surgery": {
+        "total_predictions": 1592,
+        "predictions_with_violations": 3,
+        "total_violations": 22,
+        "violation_rate": 0.0018844221105527637
+      },
+      "pharmacology": {
+        "total_predictions": 4719,
+        "predictions_with_violations": 8,
+        "total_violations": 52,
+        "violation_rate": 0.00169527442254715
+      }
+    }
+  },
+  "severity": {
+    "critical": 11,
+    "high": 0,
+    "medium": 12445
+  }
+}

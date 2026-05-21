@@ -1,0 +1,51 @@
+{
+  "metadata": {
+    "notebook": "05_Layer5_MetaCognitiveRecovery",
+    "timestamp": "1779288341.3403761",
+    "total_escalated": 12456,
+    "sample_size": 511,
+    "sample_pct": 4.1,
+    "max_iterations": 2,
+    "execution_time_mins": 6.53,
+    "device": "cuda",
+    "model": "google/flan-t5-large"
+  },
+  "metrics": {
+    "IRR": 0.5264,
+    "recovery_rate_sample": 0.5264,
+    "n_recovered_sample": 269,
+    "n_failed_sample": 242,
+    "n_opioid_recovered": 4,
+    "opioid_recovery_rate": 0.3636,
+    "estimated_total_recovered": 6557,
+    "layer4_accepts": 267,
+    "final_satisfiability_pct": 53.64,
+    "mean_conf_before": 0.095503,
+    "mean_conf_after": 0.042096,
+    "conf_improvement": -0.053407,
+    "strategies_used": {
+      "OPIOID_CONSTRAINT": 18,
+      "GENERAL_SPECIFICITY": 591,
+      "DRUG_SPECIFICITY": 65,
+      "DIAGNOSTIC_SPECIFICITY": 79
+    },
+    "recovery_by_specialty": {
+      "surgery": {
+        "attempted": 74,
+        "recovered": 36
+      },
+      "pharmacology": {
+        "attempted": 189,
+        "recovered": 107
+      },
+      "general": {
+        "attempted": 204,
+        "recovered": 106
+      },
+      "pediatrics": {
+        "attempted": 44,
+        "recovered": 20
+      }
+    }
+  }
+}

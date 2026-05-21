@@ -1,0 +1,67 @@
+{
+  "metadata": {
+    "notebook": "06_Layer6_EscalationProtocol",
+    "timestamp": "1779289404.3362474",
+    "total_escalated_records": 12187
+  },
+  "severity_distribution": {
+    "CRITICAL": {
+      "count": 7,
+      "percent": 0.06
+    },
+    "HIGH": {
+      "count": 0,
+      "percent": 0.0
+    },
+    "MEDIUM": {
+      "count": 1775,
+      "percent": 14.56
+    },
+    "LOW": {
+      "count": 10405,
+      "percent": 85.38
+    }
+  },
+  "severity_by_specialty": {
+    "general": {
+      "CRITICAL": 0,
+      "HIGH": 0,
+      "MEDIUM": 460,
+      "LOW": 4451
+    },
+    "pharmacology": {
+      "CRITICAL": 5,
+      "HIGH": 0,
+      "MEDIUM": 949,
+      "LOW": 3560
+    },
+    "pediatrics": {
+      "CRITICAL": 0,
+      "HIGH": 0,
+      "MEDIUM": 76,
+      "LOW": 1143
+    },
+    "surgery": {
+      "CRITICAL": 2,
+      "HIGH": 0,
+      "MEDIUM": 290,
+      "LOW": 1251
+    }
+  },
+  "recovery_status_breakdown": {
+    "l5_attempted_failed": 242,
+    "l5_not_sampled": 11945
+  },
+  "full_pipeline_summary": {
+    "total_predictions": 12723,
+    "layer4_accepted": 267,
+    "layer4_accepted_pct": 2.1,
+    "layer5_recovered_estimated": 6557,
+    "layer5_recovered_pct": 51.54,
+    "layer6_escalated_estimated": 5899,
+    "layer6_escalated_pct": 46.36,
+    "final_satisfiability_pct": 53.64,
+    "IRR": 0.5264,
+    "note": "Layer 5 recovery is estimated from 511-prediction stratified sample (IRR=0.5264). Layer 6 escalation count is correspondingly estimated."
+  }
+}

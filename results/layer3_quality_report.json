@@ -1,0 +1,18 @@
+{
+  "date": "2026-05-20 02:40:24.283735",
+  "n_total": 12723,
+  "empty_predictions": 26,
+  "drug_rate_pct": 9.71,
+  "no_entity_rate_pct": 84.36,
+  "entity_distribution": {
+    "PROCEDURE": 626,
+    "DRUG": 1235,
+    "ROUTE": 165,
+    "DOSE": 49,
+    "FREQUENCY": 9,
+    "ALLERGY_FLAG": 18,
+    "DURATION": 1
+  },
+  "gate_status": "CAUTION",
+  "layer4_implication": "Policy gate will check DRUG entities against contraindication and interaction policies. Dose limit checking will be limited due to rare dosing information in Flan-T5 short predictions. Empty entity sets (V(y)={}) will be treated as no-violation \u2014 satisfiability depends on confidence gate."
+}

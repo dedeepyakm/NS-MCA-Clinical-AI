@@ -1,0 +1,7 @@
+condition,description,layers,sat_pct,vpg,irr,delta_sat,z_stat,p_value,significant
+Baseline (L1 only),"Raw model, no safety",L1,1.26,0.005816,,-52.38,529.7,0.0,True
+-L5 (No Recovery),Remove meta-cognitive recovery,L1+L2+L3+L4+L6,2.1,0.005816,0.0,-51.54,405.45,0.0,True
+-L4 (No Policy),Remove policy auditor,L1+L2+L3+L5+L6,52.6,0.005816,0.5264,-1.04,2.35,0.0094,True
+-L3 (No Entities),Remove entity extraction,L1+L2+L4+L5+L6,53.64,0.0,0.5264,0.0,0.0,0.5,False
+-L2 (No Calibration),Remove temperature scaling,L1+L3+L4+L5+L6,53.37,0.005816,0.5264,-0.27,0.61,0.2708,False
+Full NS-MCA,Complete architecture,L1+L2+L3+L4+L5+L6,53.64,0.005816,0.5264,0.0,,,

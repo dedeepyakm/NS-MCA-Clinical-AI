@@ -1,0 +1,173 @@
+{
+  "metadata": {
+    "notebook": "09_AblationStudy",
+    "method": "Retrospective ablation on saved predictions",
+    "n_total": 12723,
+    "conditions": 6
+  },
+  "full_nsmca": {
+    "satisfiability_pct": 53.64,
+    "irr": 0.5264,
+    "vpg": 0.005816,
+    "n_accept": 267,
+    "n_recovered": 6557,
+    "n_escalated": 5899,
+    "description": "Full NS-MCA (L1+L2+L3+L4+L5+L6)"
+  },
+  "conditions": [
+    {
+      "label": "Baseline (L1 only)",
+      "description": "Raw model, no safety",
+      "sat": 1.26,
+      "vpg": 0.005816,
+      "irr": null,
+      "layers": "L1"
+    },
+    {
+      "label": "-L5 (No Recovery)",
+      "description": "Remove meta-cognitive recovery",
+      "sat": 2.1,
+      "vpg": 0.005816,
+      "irr": 0.0,
+      "layers": "L1+L2+L3+L4+L6"
+    },
+    {
+      "label": "-L4 (No Policy)",
+      "description": "Remove policy auditor",
+      "sat": 52.6,
+      "vpg": 0.005816,
+      "irr": 0.5264,
+      "layers": "L1+L2+L3+L5+L6"
+    },
+    {
+      "label": "-L3 (No Entities)",
+      "description": "Remove entity extraction",
+      "sat": 53.64,
+      "vpg": 0.0,
+      "irr": 0.5264,
+      "layers": "L1+L2+L4+L5+L6"
+    },
+    {
+      "label": "-L2 (No Calibration)",
+      "description": "Remove temperature scaling",
+      "sat": 53.37,
+      "vpg": 0.005816,
+      "irr": 0.5264,
+      "layers": "L1+L3+L4+L5+L6"
+    },
+    {
+      "label": "Full NS-MCA",
+      "description": "Complete architecture",
+      "sat": 53.64,
+      "vpg": 0.005816,
+      "irr": 0.5264,
+      "layers": "L1+L2+L3+L4+L5+L6"
+    }
+  ],
+  "significance": {
+    "Baseline (L1 only)": {
+      "z": 529.7,
+      "p": 0.0,
+      "significant": true
+    },
+    "-L5 (No Recovery)": {
+      "z": 405.45,
+      "p": 0.0,
+      "significant": true
+    },
+    "-L4 (No Policy)": {
+      "z": 2.35,
+      "p": 0.0094,
+      "significant": true
+    },
+    "-L3 (No Entities)": {
+      "z": 0.0,
+      "p": 0.5,
+      "significant": false
+    },
+    "-L2 (No Calibration)": {
+      "z": 0.61,
+      "p": 0.2708,
+      "significant": false
+    }
+  },
+  "condition_details": {
+    "A_baseline": {
+      "condition": "Baseline (L1 only)",
+      "layers_active": [
+        "L1"
+      ],
+      "satisfiability_pct": 1.26,
+      "vpg": 0.005816,
+      "irr": null,
+      "n_satisfiable": 160,
+      "n_violations": 11,
+      "note": "Satisfiability = raw model accuracy (1.26%). VPG = raw violation rate before any policy checking. IRR not applicable (no recovery layer)."
+    },
+    "B_no_l5": {
+      "condition": "Remove Layer 5 (no recovery)",
+      "layers_active": [
+        "L1",
+        "L2",
+        "L3",
+        "L4",
+        "L6"
+      ],
+      "satisfiability_pct": 2.1,
+      "vpg": 0.005816,
+      "irr": 0.0,
+      "n_satisfiable": 267,
+      "satisfiability_drop_pp": 51.54,
+      "z_vs_full": 405.6,
+      "note": "Without Layer 5, satisfiability = Layer 4 accepts only. Drop of 51.54pp from full NS-MCA. Layer 5 is the primary satisfiability mechanism."
+    },
+    "C_no_l4": {
+      "condition": "Remove Layer 4 (no policy gate)",
+      "layers_active": [
+        "L1",
+        "L2",
+        "L3",
+        "L5",
+        "L6"
+      ],
+      "satisfiability_pct": 52.6,
+      "vpg": 0.005816,
+      "irr": 0.5264,
+      "n_unsafe_opioid_outputs": 7,
+      "vpg_increase": 0.0,
+      "note": "Without Layer 4, opioid violations pass undetected. VPG returns to baseline (0.005816). 7 opioid-violating predictions reach clinical output without review. Layer 4 contribution is safety, not satisfiability."
+    },
+    "D_no_l3": {
+      "condition": "Remove Layer 3 (no entity extraction)",
+      "layers_active": [
+        "L1",
+        "L2",
+        "L4",
+        "L5",
+        "L6"
+      ],
+      "satisfiability_pct": 53.64,
+      "vpg": 0.0,
+      "vpg_note": "FALSE zero \u2014 violations undetected, not absent",
+      "irr": 0.5264,
+      "note": "Without Layer 3, policy gate is blind. VPG appears 0.0 but opioid violations still exist undetected. Layer 3 enables meaningful policy enforcement."
+    },
+    "E_no_l2": {
+      "condition": "Remove Layer 2 (no calibration)",
+      "layers_active": [
+        "L1",
+        "L3",
+        "L4",
+        "L5",
+        "L6"
+      ],
+      "n_pass_gate_raw": 197,
+      "n_pass_gate_calibrated": 267,
+      "satisfiability_gate_pct": 1.55,
+      "satisfiability_with_recovery_pct": 53.37,
+      "vpg": 0.005816,
+      "irr": 0.5264,
+      "note": "Without calibration, 197 predictions pass confidence gate vs 267 with calibration. Layer 2 ensures confidence scores are in a principled usable range for clinical thresholds."
+    }
+  }
+}

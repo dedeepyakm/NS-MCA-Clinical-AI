@@ -1,0 +1,11 @@
+metric,train,test
+Ground truth accuracy (%),1.26,1.02
+L4 satisfiability — policy gate only (%),2.10,0.00
+Full satisfiability — after recovery (%),53.64,53.02
+95% CI satisfiability,N/A (est.),"[50.3, 55.8]"
+IRR (overall),0.5264,0.5302
+IRR (opioid violations),0.3636,N/A (n=1)
+VPG (violations per prediction),0.005816,0.000786
+Predictions with violations (%),0.09,0.079
+Generalisation gap (pp),—,0.62
+Multiplicative improvement (vs L1),52.6x,—
