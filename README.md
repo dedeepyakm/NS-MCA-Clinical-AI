@@ -1,397 +1,472 @@
 # NS-MCA: Neuro-Symbolic Meta-Cognitive Architecture for Clinical AI Safety
 
-**Author:** Dedeepya Korukonda (Student ID: a1945558)  
-**Institution:** University of Adelaide — Master of Artificial Intelligence and Machine Learning  
-**Course:** COMP 6004 Deep Learning Applications — Assignment 2  
-**Supervisor Contact:** A/Prof Qi Wu (qi.wu01@adelaide.edu.au)  
-**Repository:** [github.com/dedeepyakm/NS-MCA-Clinical-AI](https://github.com/dedeepyakm/NS-MCA-Clinical-AI)
+**Author:** Dedeepya Korukonda  
+**Institution:** Adelaide University  
+**Course:** COMP 6004 — Deep Learning Applications  
+**Supervisor:** Qi Wu  
+**Year:** 2026  
 
 ---
 
 ## Overview
 
-NS-MCA is a six-layer neuro-symbolic safety verification framework for clinical language models. It addresses a fundamental problem in medical AI: large language models optimise for linguistic probability, not clinical policy. A model can confidently recommend a contraindicated drug and no mechanism catches it before the recommendation reaches a clinician. NS-MCA calls this the **Governance Deficit**.
+NS-MCA is a 6-layer runtime safety verification framework for 
+medical language models. It addresses the **Governance Deficit** 
+in clinical AI: large language models optimise for linguistic 
+probability, not clinical policy. A model can confidently recommend 
+a contraindicated drug and nothing catches it before a clinician acts.
 
-The architecture wraps any medical LLM with deterministic symbolic verification layers. It does not retrain the model — it audits, recovers, and escalates model outputs at inference time.
+NS-MCA does not retrain the model. It wraps any existing LLM in a 
+deterministic verification pipeline that combines stochastic neural 
+confidence (System 1) with symbolic policy auditing (System 2) to 
+produce clinically safe, auditable outputs.
 
-**Core result:** NS-MCA transforms a Flan-T5-Large model with 1.26% MedQA accuracy into a system that produces clinically-processable outputs for 53.02% of predictions on a held-out test set [95% CI: 50.3%, 55.8%] — a **52.6× improvement** over the raw model, with a **0.62 percentage point generalisation gap** between training and test distributions.
-
-> **Note:** This is academic research software developed as part of a university assignment. It is not approved for clinical deployment.
+**Primary result:** NS-MCA transforms Flan-T5-Large from 1.26% 
+raw accuracy to **53.02% satisfiability** on the held-out MedQA-USMLE 
+test set (n=1,273), a **52.6× improvement**, with a 0.62pp 
+train–test generalisation gap.
 
 ---
 
-## The Governance Deficit
+## The Problem: Governance Deficit
 
-Medical LLMs face a structural safety problem. Even when a model is confident, that confidence is uncorrelated with correctness.
+Medical LLMs produce outputs that are:
+- High confidence but clinically wrong
+- Syntactically fluent but policy-violating
+- Unverifiable without domain expertise
 
-This project empirically demonstrates the problem on MedQA-USMLE (Jin et al., 2021):
-
-```
-Mann-Whitney U test on calibrated confidence vs correctness:
-  Correct predictions mean confidence   : 0.0733
-  Incorrect predictions mean confidence : 0.1134
-  p-value: 0.8357 — NOT SIGNIFICANT
-
-Finding: Incorrect predictions have HIGHER mean confidence
-than correct ones. Confidence alone cannot gate clinical safety.
-```
-
-This finding motivated the entire architecture. If confidence cannot be trusted, a deterministic symbolic verification layer must provide the safety guarantee.
+**Empirical evidence from this work (Notebook 02):**  
+Flan-T5-Large assigns *higher* mean confidence to incorrect 
+predictions than correct ones (0.113 vs 0.073, Mann-Whitney 
+U p=0.84). Confidence alone cannot serve as a clinical safety gate.
 
 ---
 
 ## Architecture
 
-NS-MCA consists of six layers operating sequentially on each model prediction.
+NS-MCA consists of six sequential layers. Each prediction passes 
+through all layers, producing one of three outcomes: 
+**ACCEPT**, **RECOVER**, or **ESCALATE**.
 
-> **[Architecture diagram — see `/assets/architecture_diagram.png`]**
-
-```
+```text
 Input Question (X)
-        │
-        ▼
-┌───────────────────────────────────┐
-│  LAYER 1: Neural Inference        │  Stochastic
-│  Flan-T5-Large → prediction y     │
-│  conf(y) = exp((1/n)Σ log P(wᵢ)) │
-└───────────────────────────────────┘
-        │
-        ▼
-┌───────────────────────────────────┐
-│  LAYER 2: Calibration             │  Deterministic
-│  Temperature scaling via          │
-│  Brent's method (T* per specialty)│
-│  conf_cal = exp(avg_lp / T*)      │
-└───────────────────────────────────┘
-        │
-        ▼
-┌───────────────────────────────────┐
-│  LAYER 3: Entity Extraction       │  Deterministic
-│  Hybrid NER: keyword + regex      │
-│  E(y) = {DRUG, DOSE, PROCEDURE,  │
-│           ALLERGY_FLAG, ...}      │
-└───────────────────────────────────┘
-        │
-        ▼
-┌───────────────────────────────────┐
-│  LAYER 4: Policy Auditor ★        │  Deterministic
-│  S(y) ⟺ (conf ≥ τ_s) ∧           │
-│          (V(y) ∩ P = ∅)           │
-│  If S(y)=TRUE  → ACCEPT           │
-│  If S(y)=FALSE → Layer 5          │
-└───────────────────────────────────┘
-        │
-        ▼
-┌───────────────────────────────────┐
-│  LAYER 5: Meta-Cognitive Recovery │  Conditional
-│  y' = argmax P(y | X ∥ C_aug)    │
-│  Constraint-augmented regeneration│
-│  Max 2 iterations                 │
-│  If recovered → RECOVER           │
-│  If failed    → Layer 6           │
-└───────────────────────────────────┘
-        │
-        ▼
-┌───────────────────────────────────┐
-│  LAYER 6: Escalation Protocol     │  Documentation
-│  Severity: CRITICAL/HIGH/MED/LOW  │
-│  Full audit trail generated       │
-│  → ESCALATE (human review)        │
-└───────────────────────────────────┘
+       ↓
+┌─────────────────────────────────────┐
+│  Layer 1: Neural Inference          │  Stochastic (System 1)
+│  Flan-T5-Large → ŷ, conf_raw        │
+└─────────────────────────────────────┘
+       ↓
+┌─────────────────────────────────────┐
+│  Layer 2: Calibration               │  Deterministic
+│  Temperature scaling T* per         │
+│  specialty → conf_cal               │
+└─────────────────────────────────────┘
+       ↓
+┌─────────────────────────────────────┐
+│  Layer 3: Entity Extraction         │  Deterministic
+│  Hybrid NER → E(y)                  │
+│  {DRUG, PROCEDURE, DOSE, ...}       │
+└─────────────────────────────────────┘
+       ↓
+┌─────────────────────────────────────┐
+│  Layer 4: Policy Auditor ★          │  Deterministic (System 2)
+│  S(y) ⟺ (conf ≥ τ) ∧ (V(y)∩P=∅)  │
+│  → ACCEPT or escalate               │
+└─────────────────────────────────────┘
+       ↓ (if S(y) = false)
+┌─────────────────────────────────────┐
+│  Layer 5: Meta-Cognitive Recovery   │  Conditional
+│  Constraint-augmented regeneration  │
+│  y' = argmax P(y | X ∥ C_aug)      │
+│  → RECOVER or escalate              │
+└─────────────────────────────────────┘
+       ↓ (if recovery fails)
+┌─────────────────────────────────────┐
+│  Layer 6: Escalation Protocol       │  Documentation
+│  Severity: CRITICAL/HIGH/MEDIUM/LOW │
+│  → ESCALATE + audit trail           │
+└─────────────────────────────────────┘
 ```
+
+*[Architecture diagram — see* `architecture_diagram.png` *]*
 
 ### The Core Equation
 
-A prediction y is safe if and only if:
+A prediction y is **satisfiable** if and only if:
 
 $$S(y) \Leftrightarrow \left(\text{conf}(y) \geq \tau_{\text{specialty}}\right) \wedge \left(V(y) \cap P = \emptyset\right)$$
 
-Both conditions must hold simultaneously:
-1. **Calibrated confidence** meets specialty-specific clinical threshold
-2. **No policy violations** detected in extracted entities
+Where:
+- $\text{conf}(y) = \exp\!\left(\frac{1}{n}\sum_{i=1}^{n}\log P(w_i \mid w_{<i}, X)\right)$ — calibrated token log-probability confidence
+- $\tau_{\text{specialty}}$ — clinical threshold per specialty (0.65–0.85)
+- $V(y)$ — set of policy violations detected in prediction y
+- $P$ — clinical policy set
+
+Both conditions must hold simultaneously (AND logic). Neither 
+high confidence nor policy compliance alone is sufficient.
 
 ### Three Novel Metrics
 
 **Violation Proximity Gap (VPG):**
 $$\text{VPG} = \frac{1}{N}\sum_{j=1}^{N}|V(y_j) \cap P|$$
-Average policy violations per prediction. Lower is safer.
 
 **Satisfiability Score:**
 $$\text{Sat} = \frac{\#\{y_j : S(y_j) = \text{true OR recovered}\}}{N} \times 100\%$$
-Proportion of predictions handled without human escalation.
 
 **Intervention Recovery Rate (IRR):**
 $$\text{IRR} = \frac{\#\{\text{successful recoveries}\}}{\#\{\text{attempted recoveries}\}}$$
-Effectiveness of the recovery mechanism.
+
+---
+
+## Version History
+
+### Version 1 — Assignment Prototype (50 cases)
+
+The first implementation operated on a 50-case pilot with a 
+**critical confidence calculation bug**: the confidence formula 
+used `exp(sum_log_prob)` instead of `exp(mean_log_prob)`. 
+For sequences of n=6 tokens, the sum produces values near zero 
+(e.g., 0.0001), making every prediction appear low-confidence.
+
+**V1 results:** VPG=0.01, Satisfiability=100%, IRR=100%  
+**Why these were wrong:** All three metrics were artefacts of the 
+bug. 100% satisfiability appeared because all predictions trivially 
+passed a near-zero confidence threshold. The results proved the 
+concept could produce numbers — but not valid ones.
+
+### Version 2 — Bug Fix (Sigmoid Approximation)
+
+A sigmoid approximation was applied as a quick fix. This produced 
+working confidence scores but was not theoretically grounded. 
+Still limited to 50 cases.
+
+### Version 3 — Current (Publication Standard)
+
+**The correct formula:** $\text{conf}(y) = \exp\!\left(\frac{1}{n}\sum_i\log P(w_i)\right)$
+
+Changes from V2:
+- Correct mean log-probability formula (not sum, not sigmoid)
+- Added Layer 2 (Calibration) as a dedicated layer
+- Added Layer 6 (Escalation Protocol)
+- Scaled from 50 to 12,723 questions
+- Rigorous 5-model baseline comparison
+- Validated on held-out test set (n=1,273)
+
+The V1 and V2 bugs were discovered, documented, and fixed 
+transparently. Finding and correcting your own bugs is part 
+of rigorous research.
 
 ---
 
 ## Dataset
 
-**MedQA-USMLE** (Jin et al., 2021) — 12,723 multiple-choice medical questions
+**MedQA-USMLE** (Jin et al., 2021) — 12,723 clinical questions
 
-| Specialty | Count | % |
-|-----------|-------|---|
+| Specialty | N | % |
+|-----------|---|---|
 | General Medicine | 5,927 | 46.6% |
 | Pharmacology | 4,530 | 35.6% |
 | Pediatrics | 1,261 | 9.9% |
 | Surgery | 1,005 | 7.9% |
 
-**Split:** Train 10,178 / Dev 1,272 / Test 1,273 (80/10/10)
+Split: Train 10,178 / Dev 1,272 / Test 1,273 (80/10/10)
 
 ---
 
-## Version History — Why This Research Exists
+## Baseline Model Comparison
 
-### Version 1 (Prototype — Proved the Idea)
+Five models were evaluated before selecting Flan-T5-Large:
 
-The first implementation (`Symbolic_AI_Prototype_to_verify_problem_practicality.ipynb`) was a 50-case pilot that proved the architectural concept was viable. However, it contained a critical calibration bug:
+| Model | Params | M2% | Runtime | Confidence |
+|-------|--------|-----|---------|-----------|
+| **Flan-T5-Large** | 780M | 19.85 | 73 min | ✓ selected |
+| Flan-T5-XL | 3B | 20.55 | 102 min | ✓ |
+| Mistral-7B | 7B | 24.81 | 851 min | ✗ |
+| BioGPT-Large | 347M | 22.86 | 215 min | ✗ |
+| MedAlpaca-7B | 7B | 20.18 | 686 min | ✗ INVALIDATED |
 
-```python
-# BUG (V1): Integer overflow in log-probability sum
-conf = exp(sum_log_prob)  # ≈ 0.0001 due to overflow
-```
+**MedAlpaca invalidation:** 4-bit NF4 quantisation caused subword 
+token fragmentation. Published accuracy (48-52%) was not 
+reproducible at 4-bit precision. Documented as a novel finding.
 
-This produced artificially low confidence for all predictions, making the confidence gate trivially flag everything. The reported results (VPG=0.01, Satisfiability=100%, IRR=100%) were artefacts of this bug, not genuine architecture performance.
+**Key finding:** All five models perform at chance level (19–25%). 
+This validates NS-MCA's core claim — even medically specialised 
+models hallucinate, proving safety verification is necessary 
+regardless of model size.
 
-**Why V1 matters:** It proved the pipeline was technically feasible and the architecture design was sound. The bug was in the numerical implementation, not the concept.
-
-### Version 2 (Bug Fix)
-
-The second version (`NS_MCA_v2_CodeOptimization_version_2.ipynb`) applied a sigmoid approximation to fix the overflow:
-
-```python
-# V2 FIX (approximation)
-conf = sigmoid(avg_log_prob)
-```
-
-This worked but was not theoretically grounded. Results were more realistic but confidence scores still lacked proper calibration.
-
-### Version 3 (Current — Publication Standard)
-
-The current implementation uses the mathematically correct formula:
-
-```python
-# V3 CORRECT: Token log-probability average
-conf(y) = exp((1/n) * Σ log P(wᵢ | w<i, X))
-```
-
-This version adds:
-- Layer 2 (Temperature Calibration) as a dedicated notebook
-- Layer 6 (Escalation Protocol) with severity grading
-- Scale: 12,723 questions (vs 50 in V1)
-- Rigorous 5-model baseline comparison
-- Statistical validation throughout
-
-The version history is preserved in the repository as documentation that the research evolved through honest empirical discovery, not post-hoc rationalisation.
-
----
-
-## Results Summary
-
-### Final Evaluation (Test Set, n=1,273 held-out questions)
-
-| Metric | Training | Test | 95% CI |
-|--------|---------|------|--------|
-| Ground truth accuracy | 1.26% | 1.02% | — |
-| L4 satisfiability (policy gate only) | 2.10% | 0.00% | — |
-| **Full NS-MCA satisfiability** | **53.64%** | **53.02%** | **[50.3%, 55.8%]** |
-| IRR | 0.5264 | 0.5302 | — |
-| VPG | 0.005816 | 0.000786 | — |
-| Generalisation gap | — | **0.62pp** | — |
-| Multiplicative improvement | — | **52.6×** | — |
-
-### Ablation Study — Layer Contributions
-
-| Layer Removed | Sat% | ΔSat | p-value | Cohen's d | Role |
-|--------------|------|------|---------|-----------|------|
-| Baseline (L1 only) | 1.26% | -52.38pp | <0.001 | 1.17 (Large) | Raw model |
-| -L5 (No Recovery) | 2.10% | -51.54pp | <0.001 | 1.15 (Large) | Primary mechanism |
-| -L4 (No Policy) | 52.60% | -1.04pp | 0.009 | 0.02 (Negligible) | Safety guarantee |
-| -L3 (No Entities) | 53.64% | 0.00pp | 0.50 | 0.00 (Negligible) | Policy infrastructure |
-| -L2 (No Calibration) | 53.37% | -0.27pp | 0.27 | 0.01 (Negligible) | Principled gates |
-| **Full NS-MCA** | **53.64%** | **—** | **—** | **—** | **Complete** |
-
-**Key finding:** Layer 5 (meta-cognitive recovery) contributes 51.54pp of the total improvement. Layers 2, 3, and 4 provide architectural correctness and safety infrastructure whose value is not fully captured by satisfiability alone.
-
-### Pipeline Outcome Distribution
-
-```
-12,723 total predictions
-    │
-    ├── ACCEPT  (L4: S(y)=TRUE):   267  (2.1%)  — direct clinical use
-    │
-    ├── RECOVER (L5 success):    6,557  (51.5%) — recovered via constraints
-    │
-    └── ESCALATE (human review): 5,899  (46.4%) — severity-graded escalation
-              │
-              ├── CRITICAL :     7  (0.1%)  — immediate physician review
-              ├── HIGH     :     0  (0.0%)  — senior clinician review
-              ├── MEDIUM   : 1,775  (14.6%) — standard clinical review
-              └── LOW      :10,405  (85.4%) — routine clinical review
-```
+**Selection rationale:** Flan-T5-Large was the only model 
+with proper log-probability confidence scores already computed. 
+The performance gap vs the next best model (Mistral, 4.96pp) 
+was below the 15pp re-run threshold.
 
 ---
 
 ## Notebook Guide
 
-All notebooks are in `/notebooks/` and designed to run sequentially on Google Colab with A100 GPU. Each notebook saves outputs to Google Drive at `/content/drive/My Drive/NS-MCA-Results/`.
-
-### Phase 0: Data and Exploration
+### Phase 0: Data Foundation
 
 **`00_data_preparation.ipynb`**  
-Downloads and structures the MedQA-USMLE dataset. Verifies data integrity across all 12,723 questions. Saves `medqa_raw.json` to Drive. Assigns specialty labels (general, pharmacology, pediatrics, surgery) using `meta_info` field mapping.
+Loads MedQA-USMLE, verifies data integrity, assigns specialty 
+labels, and saves the working dataset. Confirms 12,723 questions 
+with 100% data integrity across all splits.
 
 **`00B_Exploratory_Data_Analysis_medqa.ipynb`**  
-Full EDA on the dataset — question length distributions, specialty balance, answer distributions. Validates the hybrid NER approach achieving **96.5% F1** on reference medical text. Establishes entity extraction baselines used in Notebook 03.
+Analyses question distribution across specialties, validates 
+the hybrid NER pipeline on reference medical text (F1=96.5%), 
+and documents the entity type distribution expected in 
+downstream layers.
 
-### Phase 1: Baseline Model Comparison
+---
+
+### Phase 1: Baseline Comparison
 
 **`01A_General_Models.ipynb`**  
-Evaluates Flan-T5-Large (780M) and Flan-T5-XL (3B) on the full 12,723 question dataset. Computes token log-probability confidence scores. Key finding: Flan-T5-Large achieves 19.85% M2 accuracy (chance level), 73-minute runtime.
+Evaluates Flan-T5-Large and Flan-T5-XL on MedQA. Both perform 
+at chance level (19.85% and 20.55% respectively). Establishes 
+that general-purpose instruction-tuned models do not have 
+reliable clinical accuracy.
 
 **`01B_Medical_Models.ipynb`**  
-Evaluates BioGPT-Large (347M) and MedAlpaca-7B (7B). **Documents the MedAlpaca invalidation**: 4-bit NF4 quantisation caused subword token fragmentation ("stre pt oc oc cus"), making published 48-52% accuracy non-reproducible at 4-bit. This is a novel finding saved in `medalpaca_annotation.json`.
+Evaluates BioGPT-Large, MedAlpaca-7B, and Mistral-7B. Contains 
+the MedAlpaca invalidation finding — 4-bit quantisation causes 
+subword fragmentation that inflates apparent accuracy. 
+All models remain at chance level.
 
 **`01C_Model_Selection.ipynb`**  
-Evidence-based model selection across all 5 candidates. **Selected: Flan-T5-Large** — only model with proper token log-probability confidence scores; 4.96pp accuracy gap vs next alternative is below the 15pp re-run threshold. All models at chance level (19-25%) validates the Governance Deficit.
+Synthesises all baseline results. Applies the 15pp re-run 
+threshold decision rule. Selects Flan-T5-Large as the 
+architecture base model. Documents the selection rationale.
 
 **`01_Layer1_NeuralInference.ipynb`**  
-Runs Layer 1 on all 12,723 questions using Flan-T5-Large. Implements the correct confidence formula. Saves `layer1_inference_outputs.json` with all predictions and confidence scores.
+Runs Flan-T5-Large on all 12,723 MedQA questions using the 
+correct confidence formula. Saves predictions and confidence 
+scores. Mean confidence: 0.070, median: 0.013. Confirms 
+chance-level accuracy (M1=0.59%, M2=19.85%).
 
-### Phase 2: The Six Layers
+---
 
-**`02_Layer2_Calibration.ipynb`** — *Layer 2: Calibration*  
-Implements temperature scaling using Brent's method (`scipy.optimize.minimize_scalar`) with a penalised ECE objective that prevents confidence collapse:
+### Phase 2: The NS-MCA Pipeline (Layers 1–6)
 
-```
-obj(T) = ECE(T) + 10 · max(0, 0.05 − median_conf(T))
-```
+**`02_Layer2_Calibration.ipynb`**  
+**Critical finding notebook.**  
+Applies temperature scaling using Brent's method 
+(`scipy.optimize.minimize_scalar`) with a usability-penalised 
+ECE objective. Finds T* per specialty (1.30–1.58). 
 
-Finds T* per specialty: general=1.3054, pharmacology=1.5846, pediatrics=1.5762, surgery=1.5001. Sets clinical thresholds τ: surgery=0.85, pediatrics=0.82, pharmacology=0.70, general=0.65.
+Mann-Whitney U test (p=0.84) confirms Flan-T5 confidence 
+is **not correlated with correctness** — incorrect predictions 
+have *higher* mean confidence than correct ones (0.113 vs 0.073). 
+This empirically proves the Governance Deficit and justifies 
+the full NS-MCA architecture. Only 2.1% of predictions 
+pass clinical confidence thresholds.
 
-**Critical finding:** Mann-Whitney U p=0.8357 — confidence is NOT correlated with correctness. Incorrect predictions have higher mean confidence (0.1134) than correct ones (0.0733). This empirically confirms the Governance Deficit and motivates the full architecture.
+**`03_Layer3_EntityExtraction.ipynb`**  
+Runs hybrid NER (keyword matching + regex) on all 12,723 
+predictions. Key finding: 84.4% of predictions have no 
+extractable drug or procedure entities. This reflects MedQA's 
+broad question scope — most questions test diagnosis and 
+pathophysiology, not drug prescribing. Drug extraction rate: 
+9.7% (1,235 predictions). Hallucinations detected: 34 (0.3%).  
+Note: scispaCy excluded — model URL deprecated in current 
+environment. Two-method hybrid achieves ~94.5% F1.
 
-**`03_Layer3_EntityExtraction.ipynb`** — *Layer 3: Entity Extraction*  
-Hybrid NER (keyword matching + regex) applied to all 12,723 predictions. Results: DRUG=1,235 (9.7%), PROCEDURE=626 (4.9%), 84.4% of predictions contain no extractable entities. This reflects MedQA's question diversity — most questions test diagnosis and pathophysiology, not drug prescribing. 34 hallucinations detected (0.3%).
+**`04_Layer4_PolicyAuditor.ipynb`**  
+**Safety verification notebook. Includes a documented correction.**  
+Implements 50 clinical policies across 5 categories. 
+*Initial version* fired policies on drug name alone, producing 
+441 false positive violations (3.47%). *Corrected version* 
+implements context-aware checking: allergy policies require 
+ALLERGY_FLAG in entities; dose policies require extracted DOSE 
+exceeding the limit. Corrected result: 74 genuine violations 
+(0.58%), all opioid safety — 0 false positives.  
+Satisfiability gate: S(y)=TRUE for 267 predictions (2.10%).
 
-**`04_Layer4_PolicyAuditor.ipynb`** — *Layer 4: Policy Auditor*  
-Implements the satisfiability gate S(y) with a 50-rule clinical policy database covering allergy contraindications, opioid safety, age restrictions, dose limits, and drug-drug interactions. **Context-aware checking** — policies only fire when triggering context is present (e.g., allergy policies require ALLERGY_FLAG in entities). Results: 267 accepted (2.10%), 74 opioid violations detected across 11 predictions, 0 false positives.
+**`05_Layer5_MetaCognitiveRecovery.ipynb`**  
+Implements constraint-augmented regeneration for all 12,456 
+escalated predictions. Uses four prompt strategies:  
+OPIOID_CONSTRAINT, DRUG_SPECIFICITY, DIAGNOSTIC_SPECIFICITY, 
+GENERAL_SPECIFICITY.  
+Recovery success criteria: clinical safety improvement 
+(no opioids + meaningful + more specific) rather than 
+confidence threshold crossing — justified by Notebook 02 
+finding that confidence is uncorrelated with correctness.  
+Results on 511-prediction stratified sample: IRR=0.5264, 
+recovery rate=52.6%. Estimated final satisfiability: 53.64%.
 
-**`05_Layer5_MetaCognitiveRecovery.ipynb`** — *Layer 5: Recovery*  
-Constraint-augmented regeneration using the same Flan-T5-Large model. Four prompt strategies: OPIOID_CONSTRAINT, DRUG_SPECIFICITY, DIAGNOSTIC_SPECIFICITY, GENERAL_SPECIFICITY. Recovery success criteria based on clinical safety improvement (no opioids + meaningful + more specific) rather than confidence threshold — justified by Notebook 02's finding that confidence is uncorrelated with correctness. Results: IRR=0.5264 on 511-prediction sample, estimated 6,557 recoveries across full dataset.
+**`06_Layer6_EscalationProtocol.ipynb`**  
+Classifies all unrecovered predictions by clinical severity 
+and generates structured audit trails. Severity distribution:  
+CRITICAL=7 (0.1%), HIGH=0 (0.0%), MEDIUM=1,775 (14.6%), 
+LOW=10,405 (85.4%). CRITICAL=7 exactly matches 11 opioid 
+violations minus 4 recovered by Layer 5 — confirming 
+end-to-end pipeline integrity.
 
-**`06_Layer6_EscalationProtocol.ipynb`** — *Layer 6: Escalation*  
-Severity classification and audit trail generation for all unrecovered predictions. Four severity levels: CRITICAL (opioid violations not recovered), HIGH (other policy violations), MEDIUM (drug/procedure + low confidence), LOW (diagnostic + low confidence). Results: CRITICAL=7, HIGH=0, MEDIUM=1,775, LOW=10,405.
+---
 
 ### Phase 3: Evaluation
 
-**`07_Layer1to6_EndToEnd_TestSet.ipynb`** — *End-to-End Test Set*  
-Runs the complete 6-layer pipeline on the held-out test set (1,273 questions, never seen during design). All pipeline functions reimplemented from saved parameters. Results: satisfiability=53.02%, IRR=0.5302, ground truth accuracy=1.02%, generalisation gap=0.62pp.
+**`07_Layer1to6_EndToEnd_TestSet.ipynb`**  
+Runs the complete 6-layer pipeline on the held-out test set 
+(1,273 questions never seen during design). Produces exact 
+(not estimated) satisfiability on independent data.  
+Results: Satisfiability=53.02%, IRR=0.5302, Ground truth 
+accuracy=1.02%. Train–test generalisation gap: 0.62pp.
 
-**`08_FullEvaluation_Metrics.ipynb`** — *Full Evaluation*  
-Computes all three primary metrics on both splits. Primary statistical test: satisfiability improvement from 2.10% to 53.02% (z=126.76, p<0.001). VPG reduced 90.5% through recovery. 95% CI [50.3%, 55.8%].
+**`08_FullEvaluation_Metrics.ipynb` (not yet in GitHub — add)**  
+Computes all three primary metrics with confidence intervals 
+and statistical tests. Primary statistical claim: Layer 5 
+improves satisfiability from 2.10% to 53.02% (z=126.76, 
+p<0.001). Reports 95% CI [50.3%, 55.8%] on test set. IRR 
+reported descriptively as generalisation metric (train=0.5264, 
+test=0.5302, gap=0.0038).
 
-**`09_AblationStudy.ipynb`** — *Ablation Study*  
-Retrospective ablation quantifying each layer's contribution. Layer 5 removal: -51.54pp (p<0.001, Cohen's d=1.15). All results, limitations, and architectural decisions documented in the final markdown cell.
-
----
-
-## Files to Add to GitHub from Drive
-
-The following output files should be added to the repository under `/results/` to make the work fully reproducible without re-running all notebooks:
-
-```
-results/
-├── layer1_inference_outputs.json      # All 12,723 predictions + confidence
-├── layer2_calibration_results.json    # Calibrated confidence, T*, τ per specialty
-├── layer3_entity_extraction_results.json  # Entities for all predictions
-├── layer4_policy_auditor_results.json # S(y), violations for all predictions
-├── layer5_summary.json                # IRR, recovery metrics
-├── layer5_layer6_handoff.json         # Handoff numbers for downstream notebooks
-├── layer6_summary.json                # Escalation severity distribution
-├── test_end_to_end_summary.json       # Full test set results
-├── evaluation_metrics_full.json       # All three primary metrics
-├── ablation_results.json              # All ablation conditions
-├── ablation_table.csv                 # Publication-ready ablation table
-└── evaluation_table_paper.csv         # Publication-ready metrics table
-```
-
-These files allow a reviewer to inspect every prediction, every violation, every recovery decision, and every metric without re-running the GPU-intensive notebooks.
+**`09_AblationStudy.ipynb` (not yet in GitHub — add)**  
+Quantifies each layer's independent contribution. Key finding: 
+Layer 5 removal drops satisfiability by 51.54pp (p<0.001, 
+Cohen's d=1.15 — Large). All other layers have negligible 
+satisfiability impact but serve distinct architectural roles: 
+Layer 4 for safety enforcement, Layer 3 for policy infrastructure, 
+Layer 2 for principled confidence calibration.
 
 ---
 
-## Known Limitations
+## Final Results
 
-**1. Confidence not predictive of correctness**  
-Flan-T5-Large confidence scores are uncorrelated with clinical correctness on MedQA (Mann-Whitney U p=0.84). Only 2.10% of predictions pass clinical thresholds, meaning Layer 5 recovery carries 96.3% of the satisfiability improvement. Future work: evaluate with better-calibrated models (GPT-3.5, Claude).
+| Metric | Training | Test | Notes |
+|--------|---------|------|-------|
+| Ground truth accuracy | 1.26% | 1.02% | Chance level |
+| L4 satisfiability (gate only) | 2.10% | 0.00% | Conf gate only |
+| **Full satisfiability** | **53.64%** | **53.02%** | Primary result |
+| 95% CI | N/A (est.) | [50.3%, 55.8%] | Wilson score |
+| IRR | 0.5264 | 0.5302 | Gap: 0.0038 |
+| VPG | 0.005816 | 0.000786 | 90.5% reduction |
+| Generalisation gap | — | **0.62pp** | Excellent |
+| Multiplicative improvement | — | **52.6×** | vs baseline |
 
-**2. Policy scope limited to opioid safety**  
-Allergy contraindication, dose limit, and age restriction policies require patient context from the question text. Without question context parsing, these policies fire incorrectly on drug names alone. They were correctly excluded from active policy checking. Future work: implement question context parser to extract patient demographics and history.
+### Ablation Study Results
 
-**3. 84.4% of predictions have no drug entities**  
-MedQA tests diagnosis, pathophysiology, and clinical reasoning — not exclusively drug prescribing. The policy auditor is most active on the pharmacology subset. This is a dataset characteristic, not an extraction failure.
-
-**4. Recovery success defined by clinical safety, not ground truth**  
-Recovered predictions are validated by safety criteria (no opioids, clinically specific, meaningful). Whether they match the MedQA ground truth answer was not measured. Future work: manual annotation of recovered prediction correctness.
-
-**5. Single model family**  
-All results are on Flan-T5-Large (780M parameters). Cross-model evaluation is future work.
-
-**6. Retrospective ablation**  
-Ablation conditions for Layer 2 and Layer 3 removal are simulated from saved predictions. A full prospective ablation with fresh inference runs would be more rigorous.
+| Condition | Satisfiability | ΔSat | p-value | Cohen's d |
+|-----------|---------------|------|---------|-----------|
+| Baseline (L1 only) | 1.26% | -52.38pp | <0.001 | 1.17 (Large) |
+| -L5 (No Recovery) | 2.10% | -51.54pp | <0.001 | 1.15 (Large) |
+| -L4 (No Policy) | 52.60% | -1.04pp | 0.009 | 0.02 (Negligible) |
+| -L3 (No Entities) | 53.64% | 0.00pp | 0.50 | 0.00 |
+| -L2 (No Calibration) | 53.37% | -0.27pp | 0.27 | 0.01 |
+| **Full NS-MCA** | **53.64%** | **—** | **—** | **—** |
 
 ---
 
-## How to Run
+## Documented Limitations
 
-### Prerequisites
+1. **Confidence not predictive** — Flan-T5 confidence is 
+uncorrelated with correctness (p=0.84). Only 2.1% pass 
+clinical thresholds. Future work: better-calibrated models.
+
+2. **Policy scope limited to opioids** — Allergy, dose, and 
+age policies require patient context from the question text, 
+which is not available in the prediction text. Only opioid 
+safety policies (universal safety concern) are active. Future 
+work: question context parser.
+
+3. **Layer 5 dominance** — Recovery mechanism carries 96.3% 
+of the satisfiability improvement (51.54pp of 52.38pp). 
+Layers 2–4 provide architectural correctness and safety 
+infrastructure not fully captured by satisfiability.
+
+4. **Retrospective ablation** — Ablation conditions for 
+Layers 2 and 3 removal are simulated from saved predictions 
+rather than fresh pipeline re-runs.
+
+5. **Single model family** — All results on Flan-T5-Large 
+(780M). Cross-model validation is future work.
+
+6. **Recovery correctness unmeasured** — Recovery success 
+is measured by clinical safety (VPG reduction) and specificity, 
+not by ground truth answer correctness.
+
+---
+
+## Reproducing the Results
+
+### Requirements
 
 ```bash
-# Google Colab with A100 GPU (recommended)
-# Google Drive mounted at /content/drive/
-
-# Required packages (auto-installed in each notebook)
-pip install transformers torch datasets scipy pandas matplotlib tqdm
+Python 3.10+
+torch >= 2.0
+transformers >= 4.35
+scipy, numpy, pandas, matplotlib
+Google Colab (A100 GPU recommended for Notebooks 01, 05, 07)
+Google Drive (for intermediate result storage)
 ```
+
+### Setup
+
+```bash
+git clone https://github.com/dedeepyakm/NS-MCA-Clinical-AI
+cd NS-MCA-Clinical-AI
+pip install -r requirements.txt
+```
+
+### Data
+
+MedQA-USMLE is available at:  
+https://github.com/jind11/MedQA
+
+Download and save as `medqa_raw.json` to your Google Drive 
+at `/content/drive/My Drive/NS-MCA-Results/`.
 
 ### Execution Order
 
-Run notebooks in numerical order. Each notebook loads its inputs from Drive and saves outputs to Drive, creating a reproducible pipeline.
+Run notebooks in order: 00 → 00B → 01 → 01A → 01B → 01C → 
+02 → 03 → 04 → 05 → 06 → 07 → 08 → 09.
 
-```
-00_data_preparation.ipynb          (~5 min, CPU)
-00B_EDA.ipynb                      (~10 min, CPU)
-01A_General_Models.ipynb           (~102 min, A100)
-01B_Medical_Models.ipynb           (~215+ min, A100)
-01C_Model_Selection.ipynb          (~5 min, CPU)
-01_Layer1_NeuralInference.ipynb    (~73 min, A100)
-02_Layer2_Calibration.ipynb        (~15 min, CPU)
-03_Layer3_EntityExtraction.ipynb   (~1 min, CPU)
-04_Layer4_PolicyAuditor.ipynb      (~1 min, CPU)
-05_Layer5_MetaCognitiveRecovery.ipynb  (~7 min, A100)
-06_Layer6_EscalationProtocol.ipynb (~1 min, CPU)
-07_Layer1to6_EndToEnd_TestSet.ipynb (~28 min, A100)
-08_FullEvaluation_Metrics.ipynb    (~2 min, CPU)
-09_AblationStudy.ipynb             (~2 min, CPU)
-```
+Each notebook saves its outputs to Drive. Later notebooks 
+load from those saved outputs — do not skip notebooks.
 
-**Total GPU time:** ~5-6 hours on A100  
-**Total CPU time:** ~45 minutes
-
-### Google Drive Structure
-
-All outputs saved to: `/content/drive/My Drive/NS-MCA-Results/`
+**GPU required for:** Notebooks 01, 05, 07 (inference + recovery).  
+**CPU sufficient for:** All other notebooks.
 
 ---
 
-## References
+## Repository Structure
 
-- Jin, D., Pan, E., Oufattole, N., Weng, W. H., Fang, H., & Szolovits, P. (2021). What disease does this patient have? A large-scale open domain question answering dataset from medical exams. *Applied Sciences, 11*(14), 6421.
-- Guo, C., Pleiss, G., Sun, Y., & Weinberger, K. Q. (2017). On calibration of modern neural networks. *ICML 2017*.
-- Chung, H. W., et al. (2022). Scaling instruction-finetuned language models. *arXiv:2210.11416*.
-- Kahneman, D. (2011). *Thinking, Fast and Slow*. Farrar, Straus and Giroux.
-- Madaan, A., et al. (2023). Self-refine: Iterative refinement with self-feedback. *NeurIPS 2023*.
+```text
+NS-MCA-Clinical-AI/
+│
+├── notebooks/
+│   ├── 00_data_preparation.ipynb
+│   ├── 00B_Exploratory_Data_Analysis_medqa.ipynb
+│   ├── 01_Layer1_NeuralInference.ipynb
+│   ├── 01A_General_Models.ipynb
+│   ├── 01B_Medical_Models.ipynb
+│   ├── 01C_Model_Selection.ipynb
+│   ├── 02_Layer2_Calibration.ipynb
+│   ├── 03_Layer3_EntityExtraction.ipynb
+│   ├── 04_Layer4_PolicyAuditor.ipynb
+│   ├── 05_Layer5_MetaCognitiveRecovery.ipynb
+│   ├── 06_Layer6_EscalationProtocol.ipynb
+│   ├── 07_Layer1to6_EndToEnd_TestSet.ipynb
+│   ├── 08_FullEvaluation_Metrics.ipynb
+│   └── 09_AblationStudy.ipynb
+│
+├── results/
+│   ├── layer2_calibration_results.json
+│   ├── layer3_quality_report.json
+│   ├── layer4_summary.json
+│   ├── layer5_summary.json
+│   ├── layer6_summary.json
+│   ├── evaluation_metrics_full.json
+│   ├── ablation_results.json
+│   ├── ablation_table.csv
+│   └── evaluation_table_paper.csv
+│
+├── data/
+│   └── README.md
+│
+├── architecture_diagram.png
+├── requirements.txt
+└── README.md
+```
 
 ---
 
@@ -401,23 +476,35 @@ If you use this work, please cite:
 
 ```bibtex
 @misc{korukonda2026nsmca,
-  title   = {NS-MCA: A Neuro-Symbolic Meta-Cognitive Architecture 
+  title   = {NS-MCA: Neuro-Symbolic Meta-Cognitive Architecture 
              for Clinical AI Safety},
   author  = {Korukonda, Dedeepya},
   year    = {2026},
-  school  = {University of Adelaide},
-  note    = {COMP 6004 Assignment 2, 
-             Master of Artificial Intelligence and Machine Learning}
+  school  = {Adelaide University},
+  note    = {COMP 6004 Assignment 2, Supervised by Qi Wu}
 }
 ```
 
 ---
 
-## Acknowledgements
+## References
 
-Supervised by A/Prof Qi Wu (V3A Lab, University of Adelaide). Dataset from Jin et al. (2021) MedQA-USMLE. Compute provided by Google Colab Pro (A100 GPU).
+1. Jin, D. et al. (2021). What disease does this patient have? 
+   A large-scale open domain question answering dataset from 
+   medical exams. *AAAI*.
+   
+2. Guo, C. et al. (2017). On calibration of modern neural 
+   networks. *ICML*.
+   
+3. Khot, T. et al. (2023). Decomposed prompting: A modular 
+   approach for solving complex tasks. *ICLR*.
+   
+4. Kahneman, D. (2011). *Thinking, Fast and Slow*. Farrar, 
+   Straus and Giroux. (System 1 / System 2 framework)
 
 ---
 
-*University of Adelaide — Master of Artificial Intelligence and Machine Learning*  
-*COMP 6004 Deep Learning Applications — Assignment 2 — 2026*
+*This research was conducted as part of COMP 6004 Deep Learning 
+Applications at Adelaide University under the supervision of 
+Qi Wu. The complete codebase represents the NS-MCA 
+architecture development of v3 code*
