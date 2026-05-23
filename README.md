@@ -48,45 +48,6 @@ NS-MCA consists of six sequential layers. Each prediction passes
 through all layers, producing one of three outcomes: 
 **ACCEPT**, **RECOVER**, or **ESCALATE**.
 
-```text
-Input Question (X)
-       ↓
-┌─────────────────────────────────────┐
-│  Layer 1: Neural Inference          │  Stochastic (System 1)
-│  Flan-T5-Large → ŷ, conf_raw        │
-└─────────────────────────────────────┘
-       ↓
-┌─────────────────────────────────────┐
-│  Layer 2: Calibration               │  Deterministic
-│  Temperature scaling T* per         │
-│  specialty → conf_cal               │
-└─────────────────────────────────────┘
-       ↓
-┌─────────────────────────────────────┐
-│  Layer 3: Entity Extraction         │  Deterministic
-│  Hybrid NER → E(y)                  │
-│  {DRUG, PROCEDURE, DOSE, ...}       │
-└─────────────────────────────────────┘
-       ↓
-┌─────────────────────────────────────┐
-│  Layer 4: Policy Auditor ★          │  Deterministic (System 2)
-│  S(y) ⟺ (conf ≥ τ) ∧ (V(y)∩P=∅)  │
-│  → ACCEPT or escalate               │
-└─────────────────────────────────────┘
-       ↓ (if S(y) = false)
-┌─────────────────────────────────────┐
-│  Layer 5: Meta-Cognitive Recovery   │  Conditional
-│  Constraint-augmented regeneration  │
-│  y' = argmax P(y | X ∥ C_aug)      │
-│  → RECOVER or escalate              │
-└─────────────────────────────────────┘
-       ↓ (if recovery fails)
-┌─────────────────────────────────────┐
-│  Layer 6: Escalation Protocol       │  Documentation
-│  Severity: CRITICAL/HIGH/MEDIUM/LOW │
-│  → ESCALATE + audit trail           │
-└─────────────────────────────────────┘
-```
 
 <img width="1585" height="992" alt="image" src="https://github.com/user-attachments/assets/03dd2d0d-426f-4b8f-8159-cdba1f01bc10" />
 
