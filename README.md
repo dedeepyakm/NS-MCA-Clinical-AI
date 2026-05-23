@@ -67,45 +67,26 @@ Where:
 Both conditions must hold simultaneously (AND logic). Neither 
 high confidence nor policy compliance alone is sufficient.
 
-### Three Novel Metrics
+## Three Novel Metrics
 
+**Violation Proximity Gap (VPG)**
 
-### Violation Proximity Gap (VPG)
+$$\text{VPG} = \frac{1}{N}\sum_{j=1}^{N}|V(y_j) \cap P|$$
 
-$$
-\text{VPG} =
-\frac{1}{N}
-\sum_{j=1}^{N}
-\left| V(y_j) \cap P \right|
-$$
+Measures the average number of policy violations per prediction. Lower is better.
 
-### Satisfiability Score (Sat)
+**Satisfiability Score (Sat)**
 
-$$
-\text{Sat} =
-\frac{
-\left| \left\{
-y_j : S(y_j)=\text{true OR recovered}
-\right\} \right|
-}{N}
-\times 100\%
-$$
+$$\text{Sat} = \frac{N_{\text{accept}} + N_{\text{recovered}}}{N} \times 100\%$$
 
-### Intervention Recovery Rate (IRR)
+Measures the proportion of predictions the architecture can handle without human escalation.
 
-$$
-\text{IRR} =
-\frac{
-\left| \left\{
-\text{successful recoveries}
-\right\} \right|
-}{
-\left| \left\{
-\text{attempted recoveries}
-\right\} \right|
-}
+**Intervention Recovery Rate (IRR)**
 
-$$
+$$\text{IRR} = \frac{N_{\text{recovered}}}{N_{\text{attempted}}}$$
+
+Measures the effectiveness of the meta-cognitive recovery mechanism.
+
 ---
 
 ## Version History
